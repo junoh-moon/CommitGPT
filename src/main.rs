@@ -30,6 +30,7 @@ use openai::chat::{
     ChatCompletion, ChatCompletionBuilder, ChatCompletionMessage, ChatCompletionMessageRole,
 };
 use openai::BASE_URL;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
@@ -80,6 +81,8 @@ pub(crate) enum CliError {
     EmptyDiff,
     #[error("couldn't find a suitable selection")]
     EmptySelection,
+    #[error("couldn't fetch data, response from openai is not okay: {0}")]
+    FetchData(String),
     #[error("unable to parse to utf8: `{0}`")]
     FromUtf8(#[from] std::string::FromUtf8Error),
     #[error("unable to run command 'git commit'")]
@@ -239,9 +242,11 @@ impl Cli {
             .bearer_auth(api_key)
             .json(&request)
             .send()
-            .await?
-            .json::<ChatCompletion>()
             .await?;
+        if response.status() != StatusCode::OK {
+            return Err(CliError::FetchData(response.text().await?))
+        }
+        let response = response.json::<ChatCompletion>().await?;
 
         let choices = response
             .choices
