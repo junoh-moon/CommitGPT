@@ -1,4 +1,4 @@
-#CommitGPT: A ChatGPT-powered Commit Message Generator
+# CommitGPT: A ChatGPT-powered Commit Message Generator
 
 This repository contains the source code for CommitGPT, a tool that helps you create commit messages using the OpenAI ChatGPT API. It uses the GPT-4 architecture and provides a simple CLI interface for generating commit messages based on the staged changes in a Git repository.
 

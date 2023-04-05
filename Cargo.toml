@@ -2,7 +2,7 @@
 name = "commitgpt"
 description = "A CLI tool to generate commit messages using OpenAI's ChatGPT based on staged changes in a Git repository."
 keywords = ["commit-message", "openai", "chatgpt", "git", "cli"]
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 authors = ["Daniél Kerkmann <daniel@kerkmann.dev>"]
 license = "EUPL-1.2"
