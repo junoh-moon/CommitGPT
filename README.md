@@ -43,7 +43,7 @@ echo 'api_key = "YOUR_OPENAI_API_KEY"' > ~/.config/commitgpt/config.toml
 2. Run CommitGPT to generate commit message suggestions:
 
 ```bash
-codecommitgpt
+commitgpt
 ```
 
 3. Pick a commit message from the generated suggestions, or exit the selection prompt to cancel.
@@ -77,4 +77,3 @@ You may obtain a copy of the Licence at:
 
 Unless required by applicable law or agreed to in writing, software distributed under the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. \
 See the Licence for the specific language governing permissions and limitations under the Licence.
-
