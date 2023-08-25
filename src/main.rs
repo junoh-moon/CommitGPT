@@ -22,94 +22,77 @@
  * Using our software or hardware with you coffee machine may void your warranty
  * and we cannot be held liable for any damage or operating failure.
  */
+use std::{
+    process::{Command, ExitCode},
+    time::Duration,
+};
+
 use clap::{Parser, ValueEnum};
-use config::{Config, Environment, File};
 use dialoguer::{theme::ColorfulTheme, Select};
 use indicatif::ProgressBar;
-use openai::chat::{
-    ChatCompletion, ChatCompletionBuilder, ChatCompletionMessage, ChatCompletionMessageRole,
-};
-use openai::BASE_URL;
-use reqwest::StatusCode;
+use openai::chat::{ChatCompletionBuilder, ChatCompletionMessage, ChatCompletionMessageRole};
 use serde::Deserialize;
-use std::path::PathBuf;
-use std::process::{Command, ExitCode};
-use std::time::Duration;
-use thiserror::Error;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[command(next_line_help = true)]
-struct Cli {
-    /// The amount of suggestions ChatGPT should generate
-    #[arg(short, long, value_parser = 1..=10, default_value_t = 5)]
-    suggestions: i64,
-    #[arg(short, long, default_value_t = true)]
-    ignore_space: bool,
-    #[arg(short, long)]
-    path: Option<String>,
-    #[arg(short, long, value_parser = 1..=4096, default_value_t = 400)]
-    tokens: i64,
-    #[arg(short, long, value_enum, default_value_t = Model::Chat3X5Turbo)]
-    model: Model,
-}
+mod args;
+mod config;
+mod error;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-enum Model {
-    Chat3X5Turbo,
-    Chat3X5Turbo0301,
+use args::*;
+use config::*;
+use error::*;
+
+#[derive(Default, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub(crate) enum Model {
+    #[default]
+    #[serde(alias = "gpt-3.5-turbo")]
+    #[value(name = "gpt-3.5-turbo")]
+    GPT3X5Turbo,
+
+    #[serde(alias = "gpt-3.5-turbo-0301")]
+    #[value(name = "gpt-3.5-turbo-0301")]
+    GPT3X5Turbo0301,
+
+    #[serde(alias = "gpt-4")]
+    #[value(name = "gpt-4")]
+    GPT4,
 }
 
 impl ToString for Model {
     fn to_string(&self) -> String {
         match self {
-            Self::Chat3X5Turbo => "gpt-3.5-turbo".to_string(),
-            Self::Chat3X5Turbo0301 => "gpt-3.5-turbo-0301".to_string(),
+            Self::GPT3X5Turbo => "gpt-3.5-turbo".to_string(),
+            Self::GPT3X5Turbo0301 => "gpt-3.5-turbo-0301".to_string(),
+            Self::GPT4 => "gpt-4".to_string(),
         }
     }
 }
 
-#[derive(Error, Debug)]
-pub(crate) enum CliError {
-    #[error("unexpected chat completion error: `{0}`")]
-    ChatCompletionBuilder(#[from] openai::chat::ChatCompletionBuilderError),
-    #[error("unable to run command: `{0}`")]
-    CommandError(#[from] std::io::Error),
-    #[error("unable to load config: `{0}`")]
-    Config(#[from] config::ConfigError),
-    #[error("there are no active changes, add them first to staging")]
-    EmptyDiff,
-    #[error("couldn't find a suitable selection")]
-    EmptySelection,
-    #[error("couldn't fetch data, response from openai is not okay: {0}")]
-    FetchData(String),
-    #[error("unable to parse to utf8: `{0}`")]
-    FromUtf8(#[from] std::string::FromUtf8Error),
-    #[error("unable to run command 'git commit'")]
-    GitCommit,
-    #[error("unable to run command 'git diff'")]
-    GitDiff,
-    #[error("unable to fetch data: `{0}`")]
-    Reqwest(#[from] reqwest::Error),
-    #[error("unable to parse json: `{0}`")]
-    Serde(#[from] serde_json::Error),
-}
-
-#[derive(Deserialize)]
-struct CliConfig {
-    api_key: String,
+fn git_preflight_check() -> Result<(), ExitCode> {
+    let git_command_exists = match Command::new("git").arg("status").status() {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    };
+    if !git_command_exists {
+        eprintln!("Git is not installed or you are not in a git repository.");
+        return Err(ExitCode::FAILURE);
+    }
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    if let Err(err) = Cli::parse().run().await {
-        match err {
-            CliError::Config(_) => {
-                eprintln!(
-                    r#"
+    if let Err(code) = git_preflight_check() {
+        return code;
+    }
+
+    let config = match read_config().await {
+        Ok(config) => config,
+        Err(_) => {
+            eprintln!(
+                r#"
   _______________________________________
-/ Looks like we have a MOOstake here! The \\
-\\ configuration file is missing.          /
+/ Looks like we have a MOOstake here! The \
+\ configuration file is missing.          /
   ---------------------------------------
          \   ^__^ 
           \  (oo)\_______
@@ -119,10 +102,26 @@ async fn main() -> ExitCode {
 
 tldr; missing config `~/.config/commitgpt/config.toml`
 ```toml
+# (required) Your API key from https://platform.openai.com/account/api-keys
 api_key = "YOUR_OPENAI_API_KEY"
+
+# (optional) The given context to let ChatGPT know what he should do with the git diff
+context_prefix = """{}"""
+
+# (optional) The amount of suggestions ChatGPT should generate
+suggestions = {}
+
+# (optional) Ignore space change and blank lines in the git diff
+ignore_space = {}
+
+# (optional) The maximum amount of token which should be used for ChatGPT
+max_tokens = {}
+
+# (optional) The model which should be used for ChatGPT
+model = "{}"
 ```
 
-The configuration file for CommitGPT could not be found or is invalid. The expected configuration file should be located at `~/.config/commitgpt/config.toml` for TOML file format.
+The configuration file for CommitGPT could not be found or is invalid. The expected configuration file should be located at `~/.config/commitgpt/config.toml` in TOML file format.
 
 The possible reasons for this error could be:
 
@@ -134,37 +133,59 @@ The possible reasons for this error could be:
 
 Please ensure that the configuration file is present at the expected location and is named correctly. Also, ensure that the api_key key-value pair is present and correctly formatted.
 
-If you have confirmed that the configuration file is present, named correctly, and has the correct key-value pair, try opening the configuration file in a text editor to check for syntax errors. You can also try validating the configuration file using a TOML validator.
+If you have confirmed that the configuration file is present, named correctly, and has the correct key-value pair, try opening the configuration file in a text editor to check for syntax errors.
+You can also try validating the configuration file using a TOML validator.
 
 You can create an API key by visiting https://platform.openai.com/account/api-keys and following the instructions provided there.
 
-If you continue to experience issues, please feel free to reach out to me under: https://gitlab.com/kerkmann/commitgpt"#
-                )
-            }
+If you continue to experience issues, please feel free to reach out to me under: https://gitlab.com/kerkmann/commitgpt"#,
+                default_context_prefix(),
+                default_suggestions(),
+                default_ignore_space(),
+                default_tokens(),
+                Model::default().to_string(),
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+    let args = Args::parse();
+
+    if let Err(err) = Cli::new(config, args).run().await {
+        match err {
+            Error::Config(_) => {}
             err => {
                 eprintln!("{err}");
             }
         }
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
+        return ExitCode::FAILURE;
     }
+    ExitCode::SUCCESS
+}
+
+struct Cli {
+    config: Config,
+    args: Args,
 }
 
 impl Cli {
-    async fn run(&self) -> Result<(), CliError> {
-        let api_key = self.read_config().await?.api_key;
+    fn new(config: Config, args: Args) -> Self {
+        Self { config, args }
+    }
 
-        let diff = self.get_diff()?;
+    async fn run(&self) -> Result<(), Error> {
+        openai::set_key(self.config.api_key.clone());
+
+        let diff = self.get_git_diff()?;
         if diff.is_empty() {
-            return Err(CliError::EmptyDiff);
+            return Err(Error::EmptyDiff);
         }
-        let response = self.get_response(api_key, diff).await?;
+
+        let response = self.get_response(diff).await?;
         let selection = response
             .clone()
             .into_iter()
             .map(|message| message.split('\n').map(str::to_owned).collect::<Vec<_>>())
-            .map(|message| message.first().unwrap().clone())
+            .filter_map(|message| message.first().cloned())
             .collect::<Vec<_>>();
 
         loop {
@@ -177,7 +198,7 @@ impl Cli {
             match selection {
                 Ok(index) => {
                     if self
-                        .commit(response.get(index).ok_or(CliError::EmptySelection)?)
+                        .commit(response.get(index).ok_or(Error::EmptySelection)?)
                         .is_ok()
                     {
                         return Ok(());
@@ -188,109 +209,96 @@ impl Cli {
         }
     }
 
-    async fn read_config(&self) -> Result<CliConfig, CliError> {
-        let mut settings_path = if let Ok(xdg_env) = std::env::var("XDG_CONFIG_HOME") {
-            PathBuf::from(xdg_env)
-        } else {
-            let mut path = PathBuf::from(std::env!("HOME"));
-            path.push(".config");
-            path
-        };
-        settings_path.push("commitgpt/config");
-
-        let settings = Config::builder()
-            .add_source(File::with_name(settings_path.to_string_lossy().as_ref()).required(true))
-            .add_source(Environment::with_prefix("OPENAI"))
-            .build()?;
-
-        let config = settings.try_deserialize::<CliConfig>()?;
-        Ok(config)
-    }
-
-    fn get_diff(&self) -> Result<String, CliError> {
+    fn get_git_diff(&self) -> Result<String, Error> {
         let mut arguments = vec!["--no-pager", "diff", "--staged"];
-        if self.ignore_space {
+        if self.args.ignore_space.unwrap_or(self.config.ignore_space) {
             arguments.push("--ignore-space-change");
             arguments.push("--ignore-blank-lines");
         }
-        if let Some(ref path) = self.path {
+        for path in &self.args.path {
             arguments.push(path.as_str());
         }
         let output = Command::new("git").args(&arguments).output()?;
         if !output.status.success() {
-            return Err(CliError::GitDiff);
+            return Err(Error::GitDiff);
         }
         let respone = String::from_utf8(output.stdout)?;
         Ok(respone)
     }
 
-    async fn get_response(&self, api_key: String, diff: String) -> Result<Vec<String>, CliError> {
-        let pb = ProgressBar::new_spinner().with_message("🤖 Fetching responses from ChatGPT.");
-        pb.enable_steady_tick(Duration::from_millis(120));
+    async fn get_response(&self, diff: String) -> Result<Vec<String>, Error> {
+        let progress_bar =
+            ProgressBar::new_spinner().with_message("🤖 Fetching responses from ChatGPT.");
+        progress_bar.enable_steady_tick(Duration::from_millis(120));
 
-        let request = ChatCompletionBuilder::default()
-            .n(self.suggestions as u8)
-            .model(self.model.to_string())
-            .max_tokens(self.tokens as u64)
-            .messages(vec![self.get_system_message(), self.get_user_message(diff)])
-            .build()?;
-
-        let client = reqwest::Client::new();
-        let response = client
-            .post(format!("{BASE_URL}chat/completions"))
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .bearer_auth(api_key)
-            .json(&request)
-            .send()
-            .await?;
-        if response.status() != StatusCode::OK {
-            return Err(CliError::FetchData(response.text().await?))
-        }
-        let response = response.json::<ChatCompletion>().await?;
+        let response = ChatCompletionBuilder::default()
+            .n(self
+                .args
+                .suggestions
+                .map(|suggestions| suggestions as u8)
+                .unwrap_or(self.config.suggestions))
+            .model(self.args.model.unwrap_or(self.config.model).to_string())
+            .max_tokens(
+                self.args
+                    .max_tokens
+                    .map(|suggestions| suggestions as u64)
+                    .unwrap_or(self.config.max_tokens),
+            )
+            .messages(vec![
+                self.get_system_message(self.config.context_prefix.clone()),
+                self.get_user_message(diff),
+            ])
+            .create()
+            .await
+            .map_err(|error| Error::FetchData(error.message))?;
 
         let choices = response
             .choices
             .into_iter()
-            .map(|choice| choice.message.content)
+            .map(|choice| {
+                choice
+                    .message
+                    .content
+                    .expect("expect content data from ChatGPT")
+            })
             .collect::<Vec<_>>();
-        pb.finish();
+        progress_bar.finish();
         Ok(choices)
     }
 
-    fn get_system_message(&self) -> ChatCompletionMessage {
+    fn get_system_message(&self, context_prefix: String) -> ChatCompletionMessage {
         ChatCompletionMessage {
             role: ChatCompletionMessageRole::System,
-            content: r#"You are a helpful assistant which helps to write commit messages based on the given diff.
-Follow the following git commit message convention:
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-"#
-            .to_string(),
-            name: None
+            content: Some(context_prefix),
+            name: None,
+            function_call: None,
         }
     }
 
     fn get_user_message(&self, diff: String) -> ChatCompletionMessage {
         ChatCompletionMessage {
             role: ChatCompletionMessageRole::User,
-            content: format!(
-                "```diff\n{}\n```",
+            content: Some(format!(
+                r#"
+Why: {}
+What: ```diff
+{}
+```
+"#,
+                self.args.reason,
                 diff.chars().take(3800).collect::<String>()
-            ),
+            )),
             name: None,
+            function_call: None,
         }
     }
 
-    fn commit(&self, message: &str) -> Result<(), CliError> {
+    fn commit(&self, message: &str) -> Result<(), Error> {
         let status = Command::new("git")
             .args(["commit", "--message", message, "--edit"])
             .status()?;
         if !status.success() {
-            return Err(CliError::GitCommit);
+            return Err(Error::GitCommit);
         }
         Ok(())
     }
