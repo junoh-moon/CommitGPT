@@ -43,7 +43,6 @@ use error::*;
 
 #[derive(Default, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub(crate) enum Model {
-    #[default]
     #[serde(alias = "gpt-3.5-turbo")]
     #[value(name = "gpt-3.5-turbo")]
     GPT3X5Turbo,
@@ -60,6 +59,7 @@ pub(crate) enum Model {
     #[value(name = "gpt-4-32k")]
     GPT432K,
 
+    #[default]
     #[serde(alias = "gpt-3.5-turbo-16k")]
     #[value(name = "gpt-3.5-turbo-16k")]
     GPT3X5Turbo16K,
