@@ -20,9 +20,6 @@ pub(crate) struct Args {
     #[arg(short, long, value_enum)]
     pub(crate) model: Option<super::Model>,
 
-    /// The reason why something has been changed
-    pub(crate) reason: String,
-
     /// The files which should be transmitted as diff, otherwise all files till be transmited
     pub(crate) path: Vec<String>,
 }

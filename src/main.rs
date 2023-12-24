@@ -55,6 +55,14 @@ pub(crate) enum Model {
     #[serde(alias = "gpt-4")]
     #[value(name = "gpt-4")]
     GPT4,
+
+    #[serde(alias = "gpt-4-32k")]
+    #[value(name = "gpt-4-32k")]
+    GPT432K,
+
+    #[serde(alias = "gpt-3.5-turbo-16k")]
+    #[value(name = "gpt-3.5-turbo-16k")]
+    GPT3X5Turbo16K,
 }
 
 impl ToString for Model {
@@ -63,6 +71,8 @@ impl ToString for Model {
             Self::GPT3X5Turbo => "gpt-3.5-turbo".to_string(),
             Self::GPT3X5Turbo0301 => "gpt-3.5-turbo-0301".to_string(),
             Self::GPT4 => "gpt-4".to_string(),
+            Self::GPT432K => "gpt-4-32k".to_string(),
+            Self::GPT3X5Turbo16K => "gpt-3.5-turbo-16k".to_string(),
         }
     }
 }
@@ -280,13 +290,11 @@ impl Cli {
             role: ChatCompletionMessageRole::User,
             content: Some(format!(
                 r#"
-Why: {}
 What: ```diff
 {}
 ```
 "#,
-                self.args.reason,
-                diff.chars().take(3800).collect::<String>()
+                diff.chars().collect::<String>()
             )),
             name: None,
             function_call: None,
