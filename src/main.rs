@@ -43,36 +43,31 @@ use error::*;
 
 #[derive(Default, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub(crate) enum Model {
+    #[default]
     #[serde(alias = "gpt-3.5-turbo")]
     #[value(name = "gpt-3.5-turbo")]
     GPT3X5Turbo,
-
-    #[serde(alias = "gpt-3.5-turbo-0301")]
-    #[value(name = "gpt-3.5-turbo-0301")]
-    GPT3X5Turbo0301,
 
     #[serde(alias = "gpt-4")]
     #[value(name = "gpt-4")]
     GPT4,
 
-    #[serde(alias = "gpt-4-32k")]
-    #[value(name = "gpt-4-32k")]
-    GPT432K,
+    #[serde(alias = "gpt-4-turbo")]
+    #[value(name = "gpt-4-turbo")]
+    GPT4Turbo,
 
-    #[default]
-    #[serde(alias = "gpt-3.5-turbo-16k")]
-    #[value(name = "gpt-3.5-turbo-16k")]
-    GPT3X5Turbo16K,
+    #[serde(alias = "gpt-4o")]
+    #[value(name = "gpt-4o")]
+    GPT4o,
 }
 
 impl ToString for Model {
     fn to_string(&self) -> String {
         match self {
             Self::GPT3X5Turbo => "gpt-3.5-turbo".to_string(),
-            Self::GPT3X5Turbo0301 => "gpt-3.5-turbo-0301".to_string(),
             Self::GPT4 => "gpt-4".to_string(),
-            Self::GPT432K => "gpt-4-32k".to_string(),
-            Self::GPT3X5Turbo16K => "gpt-3.5-turbo-16k".to_string(),
+            Self::GPT4Turbo => "gpt-4-turbo".to_string(),
+            Self::GPT4o => "gpt-4o".to_string(),
         }
     }
 }
