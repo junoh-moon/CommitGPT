@@ -43,7 +43,6 @@ use error::*;
 
 #[derive(Default, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub(crate) enum Model {
-    #[default]
     #[serde(alias = "gpt-3.5-turbo")]
     #[value(name = "gpt-3.5-turbo")]
     GPT3X5Turbo,
@@ -59,6 +58,11 @@ pub(crate) enum Model {
     #[serde(alias = "gpt-4o")]
     #[value(name = "gpt-4o")]
     GPT4o,
+
+    #[default]
+    #[serde(alias = "gpt-4o-mini")]
+    #[value(name = "gpt-4o-mini")]
+    GPT4oMini,
 }
 
 impl ToString for Model {
@@ -68,6 +72,7 @@ impl ToString for Model {
             Self::GPT4 => "gpt-4".to_string(),
             Self::GPT4Turbo => "gpt-4-turbo".to_string(),
             Self::GPT4o => "gpt-4o".to_string(),
+            Self::GPT4oMini => "gpt-4o-mini".to_string(),
         }
     }
 }

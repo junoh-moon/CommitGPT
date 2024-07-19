@@ -24,7 +24,7 @@ pub(crate) struct Config {
 
     /// The maximum amount of token which should be used for ChatGPT
     #[validate(minimum = 1)]
-    #[validate(maximum = 4096)]
+    #[validate(maximum = 128000)]
     #[serde(default = "default_tokens")]
     pub(crate) max_tokens: u64,
 

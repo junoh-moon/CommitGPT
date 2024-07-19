@@ -13,7 +13,7 @@ pub(crate) struct Args {
     pub(crate) ignore_space: Option<bool>,
 
     /// The maximum amount of token which should be used for ChatGPT
-    #[arg(short = 't', long, value_parser = 1..=4096)]
+    #[arg(short = 't', long, value_parser = 1..=128000)]
     pub(crate) max_tokens: Option<i64>,
 
     /// The model which should be used for ChatGPT
