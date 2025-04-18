@@ -27,11 +27,10 @@ use std::{
     time::Duration,
 };
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use dialoguer::{theme::ColorfulTheme, Select};
 use indicatif::ProgressBar;
 use openai::chat::{ChatCompletionBuilder, ChatCompletionMessage, ChatCompletionMessageRole};
-use serde::Deserialize;
 
 mod args;
 mod config;
@@ -40,42 +39,6 @@ mod error;
 use args::*;
 use config::*;
 use error::*;
-
-#[derive(Default, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub(crate) enum Model {
-    #[serde(alias = "gpt-3.5-turbo")]
-    #[value(name = "gpt-3.5-turbo")]
-    GPT3X5Turbo,
-
-    #[serde(alias = "gpt-4")]
-    #[value(name = "gpt-4")]
-    GPT4,
-
-    #[serde(alias = "gpt-4-turbo")]
-    #[value(name = "gpt-4-turbo")]
-    GPT4Turbo,
-
-    #[serde(alias = "gpt-4o")]
-    #[value(name = "gpt-4o")]
-    GPT4o,
-
-    #[default]
-    #[serde(alias = "gpt-4o-mini")]
-    #[value(name = "gpt-4o-mini")]
-    GPT4oMini,
-}
-
-impl ToString for Model {
-    fn to_string(&self) -> String {
-        match self {
-            Self::GPT3X5Turbo => "gpt-3.5-turbo".to_string(),
-            Self::GPT4 => "gpt-4".to_string(),
-            Self::GPT4Turbo => "gpt-4-turbo".to_string(),
-            Self::GPT4o => "gpt-4o".to_string(),
-            Self::GPT4oMini => "gpt-4o-mini".to_string(),
-        }
-    }
-}
 
 fn git_preflight_check() -> Result<(), ExitCode> {
     let git_command_exists = match Command::new("git").arg("status").status() {
@@ -153,7 +116,7 @@ If you continue to experience issues, please feel free to reach out to me under:
                 default_suggestions(),
                 default_ignore_space(),
                 default_tokens(),
-                Model::default().to_string(),
+                default_model(),
             );
             return ExitCode::FAILURE;
         }
@@ -247,7 +210,7 @@ impl Cli {
                 .suggestions
                 .map(|suggestions| suggestions as u8)
                 .unwrap_or(self.config.suggestions))
-            .model(self.args.model.unwrap_or(self.config.model).to_string())
+            .model(self.args.model.clone().unwrap_or(self.config.model.clone()))
             .max_tokens(
                 self.args
                     .max_tokens

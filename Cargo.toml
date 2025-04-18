@@ -3,7 +3,7 @@ name = "commitgpt"
 description = "A CLI tool to generate commit messages using OpenAI's ChatGPT based on staged changes in a Git repository."
 keywords = ["commit-message", "openai", "chatgpt", "git", "cli"]
 categories = ["command-line-utilities", "development-tools"]
-version = "2.0.1"
+version = "2.0.2"
 edition = "2021"
 authors = ["Dani챕l Kerkmann <daniel@kerkmann.dev>"]
 license = "EUPL-1.2"
@@ -22,7 +22,7 @@ clap = { version = "4.2", features = ["derive"] }
 config_reader = { package = "config", version = "0.13"}
 dialoguer = "0.10"
 indicatif = { version = "0.17", features = ["tokio"] }
-openai = "1.0.0-alpha.13"
+openai = "=1.0.0-alpha.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_valid = "0.16.3"
 thiserror = "1.0"

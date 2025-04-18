@@ -17,8 +17,8 @@ pub(crate) struct Args {
     pub(crate) max_tokens: Option<i64>,
 
     /// The model which should be used for ChatGPT
-    #[arg(short, long, value_enum)]
-    pub(crate) model: Option<super::Model>,
+    #[arg(short, long)]
+    pub(crate) model: Option<String>,
 
     /// The files which should be transmitted as diff, otherwise all files till be transmited
     pub(crate) path: Vec<String>,

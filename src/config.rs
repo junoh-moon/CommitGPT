@@ -29,8 +29,9 @@ pub(crate) struct Config {
     pub(crate) max_tokens: u64,
 
     /// The model which should be used for ChatGPT
-    #[serde(default)]
-    pub(crate) model: super::Model,
+    /// The model which should be used for ChatGPT
+    #[serde(default = "default_model")]
+    pub(crate) model: String,
 }
 
 pub(crate) fn default_suggestions() -> u8 {
@@ -56,6 +57,10 @@ Follow the following git commit message convention:
 Changes:
 <what>"#
         .to_string()
+}
+
+pub(crate) fn default_model() -> String {
+    "gpt-4o-mini".to_string()
 }
 
 pub(crate) async fn read_config() -> Result<Config, crate::Error> {
