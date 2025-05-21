@@ -249,16 +249,29 @@ impl Cli {
     }
 
     fn get_user_message(&self, diff: String) -> ChatCompletionMessage {
-        ChatCompletionMessage {
-            role: ChatCompletionMessageRole::User,
-            content: Some(format!(
-                r#"
+        let mut content = format!(
+            r#"
 Diff: ```diff
 {}
 ```
 "#,
-                diff.chars().collect::<String>()
-            )),
+            diff.chars().collect::<String>()
+        );
+
+        if let Some(hint) = &self.args.hint {
+            content.push_str(&format!(
+                r#"
+
+Hint to consider for the commit message:
+{}
+"#,
+                hint
+            ));
+        }
+
+        ChatCompletionMessage {
+            role: ChatCompletionMessageRole::User,
+            content: Some(content),
             name: None,
             function_call: None,
         }

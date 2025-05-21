@@ -20,6 +20,9 @@ pub(crate) struct Args {
     #[arg(short, long)]
     pub(crate) model: Option<String>,
 
+    /// An optional hint or context to guide commit message generation
+    pub(crate) hint: Option<String>,
+
     /// The files which should be transmitted as diff, otherwise all files till be transmited
     pub(crate) path: Vec<String>,
 }
