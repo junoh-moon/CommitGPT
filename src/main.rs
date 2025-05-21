@@ -253,7 +253,7 @@ impl Cli {
             role: ChatCompletionMessageRole::User,
             content: Some(format!(
                 r#"
-What: ```diff
+Diff: ```diff
 {}
 ```
 "#,
